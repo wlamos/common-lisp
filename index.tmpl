@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>wlamos Blog</title>
+  <style type="text/css">
+body {
+    margin-left: 10%;
+    margin-right: 10%;
+    background: white;
+    color: black;
+}
+
+h1 {
+    font-variant: small-caps;
+    border-bottom: 2px solid black;
+    color: darkblue;
+}
+
+h2 {
+    font-variant: small-caps;
+    color: darkblue;
+}    
+  </style>
+</head>
+<body>
+  <h1>wlamos Blog</h1>
+  
+  <!-- tmpl_loop blog-posts -->
+    <div>
+      <h2>* <a href="/view/?<!-- tmpl_var url-part -->"><!-- tmpl_var title --></a></h2>
+      <div>
+        <!-- tmpl_var body -->
+      </div>
+    </div>
+  <!-- /tmpl_loop -->
+
+</body>
+</html>
