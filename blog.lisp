@@ -1,7 +1,7 @@
 (in-package :cl-user)
 
 (defpackage :wlamos.blog
-  (:use :cl)
+  (:use :cl :hunchentoot :html-template :elephant)
   (:export :start-server
 	   :stop-server))
 
@@ -13,8 +13,9 @@
 
 (use-package :elephant)
 
-(defvar *username* "")
-(defvar *password* "")
+(defvar *username* "test")
+(defvar *password* "test")
+(defvar *server-log-handle* nil)
 
 (defpclass blog-post ()
   ((title :initarg :title
@@ -55,8 +56,8 @@ alphanumeric characters or dashes (in place of spaces)."
 	      (substitute #\- #\Space title))))
 
 (defun generate-blog-post-page (template)
-  (let ((url-part (hunchentoot:query-string)))
-    (format *server-log-handle* "~a : view post ~a ~%" (time-log-string) url-part)
+  (let ((url-part (hunchentoot:query-string*)))
+    (format *server-log-handle* "~a : view post2 ~a ~%" (time-log-string) url-part)
     (with-output-to-string (stream) ;create a stream that will give us a string
       (let ((blog-post (get-instance-by-value 'blog-post 'url-part url-part)) ;Get the blog post we're intereseted in
 	    (html-template:*string-modifier* #'identity))
@@ -69,21 +70,25 @@ alphanumeric characters or dashes (in place of spaces)."
 
 (defun view-blog-post-page ()
   "Generate a page for viewing a blog post."
-  (format *server-log-handle* "~a : view post~%" (time-log-string))
+  (format *server-log-handle* "~a : view post1~%" (time-log-string))
   (generate-blog-post-page #P"post.tmpl"))
 
 (defun edit-blog-post ()
+  (format *server-log-handle* "edit-blog-post ~a ~%" (hunchentoot:request-method*))
   (with-http-authentication
-      (cond ((eq (hunchentoot:request-method) :GET)
-	     (generate-blog-post-page #P"post-edit.tmpl"))
-	    ((eq (hunchentoot:request-method) :POST)
+    (cond ((eq (hunchentoot:request-method*) :GET)
+	     (generate-blog-post-page #P"post-form.tmpl"))
+	    ((eq (hunchentoot:request-method*) :POST)
 	     (save-blog-post)))))
 
+(defun delete-blog-post ()
+  (with-http-authentication
+      (let ((url (hunchentoot:query-string*))))))
 (defun save-blog-post ()
   "Read POST data and modify blog post."
   (let ((blog-post
 	 (get-instance-by-value 'blog-post
-				'url-part (hunchentoot:query-string))))
+				'url-part (hunchentoot:query-string*))))
     (setf (title blog-post) (hunchentoot:post-parameter "title"))
     (setf (body blog-post) (hunchentoot:post-parameter "body"))
     (setf (url-part blog-post) (make-url-part (title blog-post)))
@@ -97,17 +102,27 @@ alphanumeric characters or dashes (in place of spaces)."
 
 (defun create-blog-post ()
   (with-http-authentication
-      (cond ((eq (hunchentoot:request-method) :GET)
+      (cond ((eq (hunchentoot:request-method*) :GET)
 	     (with-output-to-string (stream)
 	       (html-template:fill-and-print-template #P"post-form.tmpl" nil
 						      :stream stream)))
-	    ((eq (hunchentoot:request-method) :POST)
+	    ((eq (hunchentoot:request-method*) :POST)
 	     (save-new-blog-post)))))
 
 (defun save-new-blog-post ()
   (let ((blog-post (make-instance 'blog-post
 				  :title (hunchentoot:post-parameter "title")
 				  :body (hunchentoot:post-parameter "body"))))
+    (hunchentoot:redirect (url-part blog-post))))
+
+(defun update-blog-post ()
+  "Read POST data and modify blog post."
+  (let ((blog-post 
+         (get-instance-by-value 'blog-post
+                                'url-part (hunchentoot:query-string*))))
+    (setf (title blog-post) (hunchentoot:post-parameter "title"))
+    (setf (body blog-post) (hunchentoot:post-parameter "body"))
+    (setf (url-part blog-post) (make-url-part (title blog-post)))
     (hunchentoot:redirect (url-part blog-post))))
 
 ;; Set the web server dispatch table
@@ -132,8 +147,6 @@ alphanumeric characters or dashes (in place of spaces)."
 (defvar *blog-server* nil)
 
 (defvar *server-log-file* "/home/velen/work/github/common-lisp/server.log")
-(defvar *server-log-handle* nil)
-
 (defconstant +day-names+
     '("Monday" "Tuesday" "Wednesday"
       "Thursday" "Friday" "Saturday"
